@@ -1,0 +1,46 @@
+import { useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, Heart, MapPin, Star, Users, X } from 'lucide-react'
+import { destinations, destinationImage, properties, propertyImage, imageUrl } from '../data.js'
+import { PropertyCard } from '../components/Cards.jsx'
+import { formatNaira } from '../utils/currency.js'
+
+const TODAY = new Date().toISOString().slice(0, 10)
+
+export function DestinationDetails({ favorites, toggleFavorite }) {
+  const { destinationId } = useParams()
+  const destination = destinations.find((item) => item.id === destinationId)
+  const related = properties.filter((property) => property.destinationId === destinationId)
+  if (!destination) return <div className="not-found"><p className="eyebrow">AURA / DESTINATION</p><h1>We haven't found that place.</h1><Link to="/discover" className="text-link">Explore destinations <ArrowRight size={15} /></Link></div>
+  return <main className="destination-detail">
+    <section className="detail-hero" style={{ '--detail-image': `url("${destinationImage(destination, 2000)}")` }}><div className="detail-hero-shade" /><div className="detail-hero-copy"><p className="eyebrow">{destination.country} · {destination.region}</p><h1>{destination.name}</h1><p>{destination.description}</p><button className="destination-detail-save" type="button" aria-pressed={favorites.includes(destination.id)} onClick={() => toggleFavorite(destination.id)}><Heart size={15} fill={favorites.includes(destination.id) ? 'currentColor' : 'none'} />{favorites.includes(destination.id) ? 'Saved to your places' : 'Save this destination'}</button></div><span className="detail-coordinate">AURA FIELD NOTES&nbsp; / &nbsp;{destination.region.toUpperCase()}</span></section>
+    <div className="detail-editorial"><div><p className="eyebrow">A place to begin</p><h2>Find your own<br /><em>way into it.</em></h2></div><div><p>{destination.description} Find an unhurried pace, a table worth lingering at, and a stay that feels entirely your own.</p><p className="best-time"><span>Best time to visit</span>{destination.bestTime}</p><Link className="text-link" to={`/discover?destination=${encodeURIComponent(destination.name)}`}>Find a stay in {destination.name} <ArrowUpRight size={15} /></Link></div></div>
+    <section className="detail-stays section-pad"><div className="section-heading"><div><p className="eyebrow">{destination.name} / The collection</p><h2>Stay a little <em>longer.</em></h2></div></div>{related.length ? <div className="property-grid">{related.map((property) => <PropertyCard key={property.id} property={property} favorites={favorites} toggleFavorite={toggleFavorite} />)}</div> : <div className="empty-state"><p>We're still adding considered places here.</p><Link className="text-link" to="/discover">Explore all stays <ArrowRight size={15} /></Link></div>}</section>
+    <section className="destination-next"><img src={destinationImage(destinations[(destinations.findIndex((item) => item.id === destination.id) + 1) % destinations.length], 1500)} alt="" /><div><p className="eyebrow">Keep wandering</p><h2>Somewhere<br /><em>else awaits.</em></h2><Link className="button button-gold" to={`/destinations/${destinations[(destinations.findIndex((item) => item.id === destination.id) + 1) % destinations.length].id}`}>Explore next <ArrowUpRight size={15} /></Link></div></section>
+  </main>
+}
+
+export function PropertyDetails() {
+  const { propertyId } = useParams()
+  const property = properties.find((item) => item.id === propertyId)
+  const navigate = useNavigate()
+  const [gallery, setGallery] = useState(-1)
+  const [checkin, setCheckin] = useState('')
+  const [checkout, setCheckout] = useState('')
+  const [guests, setGuests] = useState(2)
+  const [error, setError] = useState('')
+  const destination = destinations.find((item) => item.id === property?.destinationId)
+  const images = property ? [propertyImage(property, 1500), destinationImage(destination, 1000), imageUrl('photo-1600210492486-724fe5c67fb0', 1000), imageUrl('photo-1600607687920-4e2a09cf159d', 1000)] : []
+  const nightCount = checkin && checkout ? Math.max(0, (new Date(checkout) - new Date(checkin)) / 86400000) : 0
+  const reserve = (event) => { event.preventDefault(); if (!checkin || !checkout || nightCount < 1) { setError('Choose valid arrival and departure dates.'); return } navigate(`/book/${property.id}?checkin=${checkin}&checkout=${checkout}&guests=${guests}`) }
+  if (!property) return <div className="not-found"><p className="eyebrow">AURA / STAY</p><h1>We haven't found that stay.</h1><Link className="text-link" to="/discover">Return to the collection <ArrowRight size={15} /></Link></div>
+  return <main className="property-detail">
+    <div className="mobile-reserve-bar"><span><strong>{formatNaira(property.price)}</strong><small> / night</small></span><button className="button button-gold" type="button" onClick={() => document.querySelector('.reserve-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>Check dates <ArrowUpRight size={15} /></button></div>
+    <div className="breadcrumb"><Link to="/discover"><ArrowLeft size={14} /> The collection</Link><span>/</span><Link to={`/destinations/${destination.id}`}>{destination.name}</Link></div>
+    <div className="property-detail-title"><div><p className="eyebrow">{property.category} · {destination.country}</p><h1>{property.name}</h1><p><MapPin size={14} /> {destination.name}, {destination.country}</p></div><span className="property-rating"><Star size={14} fill="currentColor" /> {property.rating} <small>({property.reviews} reviews)</small></span></div>
+    <div className="gallery-grid">{images.map((src, index) => <button type="button" className={`gallery-image gallery-image-${index + 1}`} key={src} onClick={() => setGallery(index)} aria-label={`Open photo ${index + 1} of ${images.length}`}><img src={src} alt={`${property.name}, photograph ${index + 1}`} /></button>)}<button className="gallery-all" type="button" onClick={() => setGallery(0)}>View all photographs</button></div>
+    <div className="property-layout"><section className="property-description"><div className="property-summary"><div><p className="eyebrow">A considered stay</p><h2>A place to <em>settle in.</em></h2></div><p>{property.description}</p></div><div className="property-facts"><span><Users size={17} /> Up to {property.guests} guests</span><span>{property.bedrooms} bedrooms</span><span>{property.bathrooms} bathrooms</span></div><div className="amenities"><p className="eyebrow">The thoughtful details</p><div>{property.amenities.map((amenity) => <span key={amenity}>{amenity}</span>)}</div></div><p className="demo-note">This fictional demonstration listing has no live availability. Rates are illustrative.</p></section>
+      <form className="reserve-panel" onSubmit={reserve}><p className="eyebrow">A stay, considered</p><p className="reserve-price"><strong>{formatNaira(property.price)}</strong> <span>/ night</span></p><div className="reserve-dates"><label>Check in<input type="date" min={TODAY} value={checkin} onChange={(event) => setCheckin(event.target.value)} required /></label><label>Check out<input type="date" min={checkin || TODAY} value={checkout} onChange={(event) => setCheckout(event.target.value)} required /></label></div><label className="reserve-guests">Guests<select value={guests} onChange={(event) => setGuests(Number(event.target.value))}>{Array.from({ length: property.guests }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1} {index === 0 ? 'guest' : 'guests'}</option>)}</select></label>{nightCount > 0 && <div className="price-preview"><span>{formatNaira(property.price)} × {nightCount} nights</span><span>{formatNaira(property.price * nightCount)}</span><span>Demo taxes & fees</span><span>{formatNaira(Math.round(property.price * nightCount * 0.12))}</span><strong>Estimated total</strong><strong>{formatNaira(Math.round(property.price * nightCount * 1.12))}</strong></div>}<button type="submit" className="button button-gold reserve-button">Reserve this stay <ArrowUpRight size={15} /></button>{error && <p className="form-message error" role="alert">{error}</p>}<p className="demo-note">No payment is collected. Demo reservation only.</p></form></div>
+    {gallery >= 0 && <div className="lightbox" role="dialog" aria-modal="true" aria-label="Property photographs" onKeyDown={(event) => event.key === 'Escape' && setGallery(-1)}><button className="lightbox-close" autoFocus onClick={() => setGallery(-1)} aria-label="Close gallery"><X /></button><button className="lightbox-prev" onClick={() => setGallery((gallery + images.length - 1) % images.length)} aria-label="Previous photo"><ChevronLeft /></button><img src={images[gallery]} alt={`${property.name}, photograph ${gallery + 1}`} /><button className="lightbox-next" onClick={() => setGallery((gallery + 1) % images.length)} aria-label="Next photo"><ChevronRight /></button><span>{gallery + 1} / {images.length}</span></div>}
+  </main>
+}
